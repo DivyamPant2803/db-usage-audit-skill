@@ -1,6 +1,6 @@
 # db-usage-audit
 
-A [Claude Code](https://claude.com/claude-code) skill that scans a **.NET / Entity Framework Core (code-first) + SQL Server** backend and writes a complete, evidence-backed report of how the application uses its database:
+A tool-agnostic AI coding agent skill that works in **Claude Code, GitHub Copilot, Cursor, Windsurf, Cline and Codex-style CLIs**. It scans a **.NET / Entity Framework Core (code-first) + SQL Server** backend and writes a complete, evidence-backed report of how the application uses its database:
 
 - every **table, column, index, foreign key** and constraint
 - every **workflow** (API endpoint, background job, queue or Azure Function trigger, startup task, migration, raw SQL)
@@ -18,26 +18,42 @@ Outputs:
 
 ## Install
 
-This repo contains the skill at its root, so clone it into a skills folder under the name `db-usage-audit`:
+The skill itself (`SKILL.md`, `references/`, `scripts/`) is plain markdown and Python, so it is the same for every tool. `install.py` copies it into your project and writes the small pointer file each tool uses to find it.
 
 ```bash
-# For one repo (recommended, shared with your team):
-git clone <this-repo-url> <your-repo>/.claude/skills/db-usage-audit
+git clone <this-repo-url> db-usage-audit
+cd db-usage-audit
 
-# Or for all your repos:
-git clone <this-repo-url> ~/.claude/skills/db-usage-audit
+# Pick your tool(s); repeat --tool for several, or use --tool all
+python3 install.py --target /path/to/your-backend-repo --tool cursor
+python3 install.py --target /path/to/your-backend-repo --tool copilot
+python3 install.py --target /path/to/your-backend-repo --tool claude
 ```
 
-Then start a **new** Claude Code session in the repo so it picks up the skill.
+| `--tool` | What it creates in your project | How you run it |
+|---|---|---|
+| `claude` | `.claude/skills/db-usage-audit/` | Ask in Claude Code (new session), or `/db-usage-audit` |
+| `cursor` | `.cursor/rules/db-usage-audit.mdc` + `.db-usage-audit/` | Cursor **Agent** mode; the rule is picked up by its description, or `@db-usage-audit` |
+| `copilot` | `.github/prompts/db-usage-audit.prompt.md` + `.db-usage-audit/` | Copilot Chat in **Agent** mode, type `/db-usage-audit` |
+| `windsurf` | `.windsurf/rules/db-usage-audit.md` + `.db-usage-audit/` | Cascade (agent) picks it up from the rule description |
+| `cline` | `.clinerules/db-usage-audit.md` + `.db-usage-audit/` | Ask Cline |
+| `agents` | a section in `AGENTS.md` + `.db-usage-audit/` | Codex, Gemini CLI, Copilot coding agent and any tool that reads `AGENTS.md` |
+| `all` | all of the above | |
+
+The installer is safe to re-run: files it generated are refreshed, your hand-written files are never overwritten unless you pass `--force`, and an existing `AGENTS.md` keeps its content (the skill goes in a marked section).
+
+**Any other tool:** copy this repo's `SKILL.md`, `references/` and `scripts/` into your project (for example `.db-usage-audit/`) and tell the agent: *"Follow the instructions in `.db-usage-audit/SKILL.md` exactly to produce the DB usage report."*
+
+The adapter file formats follow each tool's documented conventions but I have only tested the installer's output files and idempotence, not each IDE. If a tool does not discover the rule, use the "any other tool" prompt above; the skill content works the same way.
 
 ### Requirements
 
-- Claude Code
+- An AI coding tool **in agent mode**: it must be able to read and search the repo, create files, and run shell commands. Plain chat or autocomplete modes are not enough.
 - Python 3.8+ and the `openpyxl` package, used by two helper scripts. **You do not need to set these up:** the skill checks for them at the start of each run and installs `openpyxl` itself (user-level `pip install --user`). If Python is missing it asks before installing, and if you decline it falls back to grep-based discovery and CSV output instead of `.xlsx`.
 
 ## How to use
 
-Open Claude Code in the backend repo and ask for it in plain language.
+Open your AI coding tool in **agent mode** in the backend repo and ask for it in plain language (or use the slash command from the install table). The prompts below work the same in every tool. If your tool does not auto-select the rule, start with: "Follow the instructions in `.db-usage-audit/SKILL.md`".
 
 **Full audit (the usual one):**
 
@@ -112,6 +128,7 @@ Hand `DB_USAGE_REPORT.md` to your optimization-planning agent. The `.xlsx` is fo
 ## Layout
 
 ```text
+install.py                            Installs the skill into a project for Claude, Cursor, Copilot, Windsurf, Cline, AGENTS.md
 SKILL.md                              The skill: phases and rules the agent follows
 references/report-template.md         Exact report structure (the Excel export depends on it)
 references/ef-core-tracing-guide.md   How EF Core code maps to tables and columns

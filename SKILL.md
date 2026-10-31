@@ -13,6 +13,20 @@ This skill reports facts. It does **not** recommend changes, because mixing opin
 
 Static analysis only: read source, migrations and `.sql` files. Never connect to a database. Say so in the report, and mark traffic/volume as unknown (the planning agent should get that from Azure SQL Query Store / Query Performance Insight).
 
+## What the agent needs (works in any AI coding tool)
+
+These instructions are plain markdown and are not tied to one product. They run in Claude Code, GitHub Copilot (agent mode), Cursor (agent mode), Windsurf, Codex-style CLIs and similar, as long as the agent can:
+
+- read and search repository files (read file, grep/glob),
+- create and edit files in the repo,
+- run shell commands (for the helper scripts; optional, see the preflight fallbacks).
+
+Plain "ask" or autocomplete-only chat modes that cannot read the whole repo or write files are not enough; switch to the tool's agent mode first.
+
+`<skill-dir>` below means the folder that contains this file (so `<skill-dir>/scripts/...` and `<skill-dir>/references/...` resolve next to it). Read the reference files when a phase points to them.
+
+If the tool has a small context window or no parallel agents, the method still works because every phase saves its result to `.db-audit-work/` and the next phase reads from there. Work through the phases in order, one bounded area at a time, and resume from the ledger after any restart or context reset.
+
 ## Output
 
 Write `DB_USAGE_REPORT.md` at the repo root (or where the user says). Follow the structure in `references/report-template.md`. If the report would exceed roughly 3,000 lines, split it into `docs/db-audit/` with a `00-index.md` that links the parts, keeping stable IDs (below) so cross-references keep working.
@@ -28,7 +42,7 @@ A real backend will not fit in context, and a report written from memory will dr
 - `workflows/W-xxx.md`: one trace file per workflow (Phase 4)
 - `ledger.md`: coverage ledger; every candidate → traced / merged into W-xxx / excluded (with reason) / unresolved
 
-Only assemble the final report from these files. If you have subagents available, fan Phase 4 out per bounded context (e.g. per controller group or feature folder), giving each the schema file and the tracing guide. Each subagent writes its own `workflows/*.md`; you reconcile.
+Only assemble the final report from these files. If your tool supports subagents or parallel agents, fan Phase 4 out per bounded context (e.g. per controller group or feature folder), giving each the schema file and the tracing guide. Each one writes its own `workflows/*.md`; you reconcile. Without them, trace one bounded context at a time and write its files before moving on.
 
 ## Phase -1: Preflight (set up tooling automatically)
 
